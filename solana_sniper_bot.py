@@ -6,9 +6,10 @@ import sqlite3
 import snscrape.modules.twitter as sntwitter
 import pandas as pd
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from solana.rpc.api import Client
-from solana.account import Account
+from solana.publickey import PublicKey
+from solana.system_program import CreateAccountParams, create_account
 from solana.transaction import Transaction
+from solana.rpc.api import Client
 from dotenv import load_dotenv
 import websocket
 import json
