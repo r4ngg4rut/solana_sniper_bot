@@ -27,7 +27,7 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # Solana Wallet Setup
-PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+PRIVATE_KEY = os.getenv("SOL_PRIVATE_KEY")
 client = Client(SOLANA_RPC_URL)
 wallet = Account(bytes.fromhex(PRIVATE_KEY))
 
