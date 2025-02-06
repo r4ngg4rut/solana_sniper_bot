@@ -9,7 +9,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from solana.rpc.api import Client
 from solders.pubkey import Pubkey  # Newer versions use 'solders' package for cryptographic primitives
 from solana.rpc.commitment import Confirmed
-from solana.keypair import Keypair
+from solders.keypair import Keypair
 from solana.rpc.types import TxOpts
 from solana.transaction import Transaction
 from dotenv import load_dotenv
