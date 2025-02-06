@@ -7,7 +7,7 @@ import snscrape.modules.twitter as sntwitter
 import pandas as pd
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from solana.rpc.api import Client
-from solana.publickey import PublicKey
+from solders.pubkey import Pubkey  # Newer versions use 'solders' package for cryptographic primitives
 from solana.rpc.commitment import Confirmed
 from solana.keypair import Keypair
 from solana.rpc.types import TxOpts
