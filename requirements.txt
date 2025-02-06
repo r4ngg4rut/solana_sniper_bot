@@ -1,7 +1,7 @@
 requests 
 snscrape 
 pandas 
-solana
+solana-py==0.30.0
 websocket-client 
 python-dotenv 
 vaderSentiment
