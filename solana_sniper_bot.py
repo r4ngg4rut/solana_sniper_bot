@@ -5,6 +5,7 @@ import time
 import sqlite3
 import snscrape.modules.twitter as sntwitter
 import pandas as pd
+from base58 import b58decode
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from solana.rpc.api import Client
 from solders.pubkey import Pubkey  # Newer versions use 'solders' package for cryptographic primitives
@@ -28,10 +29,19 @@ SOLSNIFFER_API = "https://solsniffer.com/api/score/"
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
+# Decode the Base58 private key into bytes
+try:
+    decoded_key = b58decode(PRIVATE_KEY)
+
+# Create Keypair from the decoded bytes
+    print(f"Wallet Address: {wallet.pubkey()}")  # Print the wallet's public key
+except Exception as e:
+    print(f"Error decoding private key: {e}")
+
 # Solana Wallet Setup
 PRIVATE_KEY = os.getenv("SOL_PRIVATE_KEY")
 client = Client(SOLANA_RPC_URL)
-wallet = Keypair.from_secret_key(bytes.fromhex(PRIVATE_KEY))
+wallet = Keypair.from_bytes(decoded_key) 
 
 # Create SQLite Database
 conn = sqlite3.connect("solana_memecoins.db")

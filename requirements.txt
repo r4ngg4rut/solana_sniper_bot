@@ -6,3 +6,4 @@ websocket-client
 python-dotenv 
 vaderSentiment
 solders
+base58
