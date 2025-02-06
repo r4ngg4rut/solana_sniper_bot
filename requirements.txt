@@ -1,0 +1,7 @@
+requests 
+snscrape 
+pandas 
+solana 
+websocket-client 
+python-dotenv 
+vaderSentiment
