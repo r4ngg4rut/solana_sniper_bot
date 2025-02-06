@@ -5,3 +5,4 @@ solana==0.30.0
 websocket-client 
 python-dotenv 
 vaderSentiment
+pynacl
