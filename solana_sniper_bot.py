@@ -6,9 +6,12 @@ import sqlite3
 import snscrape.modules.twitter as sntwitter
 import pandas as pd
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from solana.transaction import TransactionInstruction, Transaction
-from solana.publickey import PublicKey
 from solana.rpc.api import Client
+from solana.publickey import PublicKey
+from solana.rpc.commitment import Confirmed
+from solana.keypair import Keypair
+from solana.rpc.types import TxOpts
+from solana.transaction import Transaction
 from dotenv import load_dotenv
 import websocket
 import json
@@ -28,7 +31,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 # Solana Wallet Setup
 PRIVATE_KEY = os.getenv("SOL_PRIVATE_KEY")
 client = Client(SOLANA_RPC_URL)
-wallet = Account(bytes.fromhex(PRIVATE_KEY))
+wallet = Keypair.from_secret_key(bytes.fromhex(PRIVATE_KEY))
 
 # Create SQLite Database
 conn = sqlite3.connect("solana_memecoins.db")
