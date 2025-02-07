@@ -3,20 +3,21 @@ import re
 import requests
 import time
 import sqlite3
+import ssl
+import json
+import threading
 import snscrape.modules.twitter as sntwitter
-import pandas as pd
 from base58 import b58decode
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from solana.rpc.api import Client
-from solders.pubkey import Pubkey  # Newer versions use 'solders' package for cryptographic primitives
-from solana.rpc.commitment import Confirmed
 from solders.keypair import Keypair
 from solana.rpc.types import TxOpts
 from solana.transaction import Transaction
 from dotenv import load_dotenv
 import websocket
-import json
-import threading
+
+# Disable SSL verification globally (temporary fix for Railway SSL issues)
+ssl._create_default_https_context = ssl._create_unverified_context
 
 # Load environment variables
 load_dotenv()
@@ -41,13 +42,14 @@ else:
         # Decode the Base58 private key into bytes
         decoded_key = b58decode(PRIVATE_KEY)
         
-        # Create Keypair from decoded bytes
-        wallet = Keypair.from_bytes(decoded_key)
+        # Create Keypair using the solders package (first 32 bytes)
+        wallet = Keypair.from_bytes(decoded_key[:32])
         
         # Print wallet public key
         print(f"Wallet Address: {wallet.pubkey()}")
     except Exception as e:
         print(f"Error decoding private key: {e}")
+
 # Create SQLite Database
 conn = sqlite3.connect("solana_memecoins.db")
 cursor = conn.cursor()
@@ -73,7 +75,7 @@ def send_telegram_alert(message):
     data = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
     requests.post(url, data=data)
 
-# Monkey patch the requests session used by snscrape to add headers
+# Monkey patch requests for snscrape to add headers
 original_request = requests.Session.request
 
 def patched_request(self, method, url, *args, **kwargs):
@@ -156,13 +158,16 @@ def snipe_token(token_address):
     response = requests.post(JUPITER_SWAP_API, json=payload)
     swap_data = response.json()
 
-    if "data" in swap_data:
-        txn = Transaction.deserialize(bytes.fromhex(swap_data["data"]["swapTransaction"]))
-        txn.sign(wallet)
-        client.send_transaction(txn, wallet)
-        print(f"✅ Sniped {token_address} successfully!")
+    if "swapTransaction" in swap_data:
+        try:
+            txn = Transaction.deserialize(bytes.fromhex(swap_data["swapTransaction"]))
+            txn.sign(wallet)
+            result = client.send_transaction(txn, wallet, opts=TxOpts(skip_confirmation=False))
+            print(f"✅ Sniped {token_address} successfully! Transaction ID: {result}")
+        except Exception as e:
+            print(f"❌ Error sending transaction for {token_address}: {e}")
     else:
-        print(f"❌ Sniping failed for {token_address}.")
+        print(f"❌ Sniping failed for {token_address}. No transaction data.")
 
 # Sell Tokens (80% Sell, 20% Moonbag)
 def take_profit(token_address, balance):
@@ -177,13 +182,16 @@ def take_profit(token_address, balance):
     response = requests.post(JUPITER_SWAP_API, json=payload)
     swap_data = response.json()
 
-    if "data" in swap_data:
-        txn = Transaction.deserialize(bytes.fromhex(swap_data["data"]["swapTransaction"]))
-        txn.sign(wallet)
-        client.send_transaction(txn, wallet)
-        print(f"✅ Sold 80% of {token_address}, keeping 20% moonbag!")
+    if "swapTransaction" in swap_data:
+        try:
+            txn = Transaction.deserialize(bytes.fromhex(swap_data["swapTransaction"]))
+            txn.sign(wallet)
+            result = client.send_transaction(txn, wallet, opts=TxOpts(skip_confirmation=False))
+            print(f"✅ Sold 80% of {token_address}, keeping 20% moonbag! Transaction ID: {result}")
+        except Exception as e:
+            print(f"❌ Error selling {token_address}: {e}")
     else:
-        print(f"❌ Sell failed for {token_address}.")
+        print(f"❌ Sell failed for {token_address}. No transaction data.")
 
 # WebSocket for DexScreener real-time price updates
 def on_message(ws, message):
@@ -220,11 +228,12 @@ def run_websocket():
     ws.on_open = on_open
     ws.run_forever()
 
-# Run WebSocket in a separate thread
+# Run WebSocket in a separate thread (prevent duplicates)
 def start_real_time_monitoring():
-    websocket_thread = threading.Thread(target=run_websocket)
-    websocket_thread.daemon = True
-    websocket_thread.start()
+    if not threading.active_count() > 1:
+        websocket_thread = threading.Thread(target=run_websocket)
+        websocket_thread.daemon = True
+        websocket_thread.start()
 
 # Target price for token (example: sell if price >= 2x initial price)
 target_price_multiplier = 2.0
@@ -245,9 +254,8 @@ def monitor_price(contract_address, current_price):
         take_profit(contract_address, balance)
         initial_price = None  # Reset initial price after selling
 
-# Get wallet balance for a specific token (assumed)
+# Get wallet balance for a specific token (assumed placeholder)
 def get_wallet_balance(contract_address):
-    # Placeholder: Assume fetching wallet balance for token
     return 100  # Example value: 100 tokens
 
 # Main Function
