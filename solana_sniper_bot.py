@@ -4,37 +4,33 @@ import requests
 import sqlite3
 import ssl
 import json
-import threading
-import snscrape.modules.twitter as sntwitter
-from base58 import b58decode
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from solana.rpc.api import Client
 from solders.keypair import Keypair
 from solana.rpc.types import TxOpts
 from solana.transaction import Transaction
 from dotenv import load_dotenv
-import websocket
+import tweepy
 
-# ---------------------- SSL FIXES ----------------------
+# ---------------------- SSL FIX FOR TWEETY AND REQUESTS ----------------------
 
-# Disable SSL verification globally (temporary fix for Railway or Tweepy SSL issues)
+# Disable SSL verification globally (temporary fix)
 ssl._create_default_https_context = ssl._create_unverified_context
 
-# Monkey patch requests to bypass SSL verification
+# Patch requests for tweepy and other libraries
 original_request = requests.Session.request
 
 def patched_request(self, method, url, *args, **kwargs):
     headers = kwargs.get('headers', {})
     headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     kwargs['headers'] = headers
-    kwargs['verify'] = False  # Disable SSL verification globally for all requests
+    kwargs['verify'] = False  # Disable SSL verification
     return original_request(self, method, url, *args, **kwargs)
 
 requests.Session.request = patched_request
 
-# ---------------------- ENVIRONMENT CONFIGURATION ----------------------
+# ---------------------- LOAD ENVIRONMENT VARIABLES ----------------------
 
-# Load environment variables
 load_dotenv()
 
 SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com"
@@ -44,36 +40,34 @@ SOLSNIFFER_API = "https://solsniffer.com/api/score/"
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
+# Twitter API Keys
+TWITTER_API_KEY = os.getenv("TWITTER_API_KEY")
+TWITTER_API_SECRET = os.getenv("TWITTER_API_SECRET")
+TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
+TWITTER_ACCESS_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
+
+# ---------------------- SETUP TWEETY AUTHENTICATION ----------------------
+
+auth = tweepy.OAuth1UserHandler(TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET)
+api = tweepy.API(auth, wait_on_rate_limit=True)
+
 # ---------------------- SOLANA WALLET SETUP ----------------------
 
 PRIVATE_KEY = os.getenv("SOL_PRIVATE_KEY")
 client = Client(SOLANA_RPC_URL)
 
-# Ensure the private key is present
 if PRIVATE_KEY is None:
     print("Error: PRIVATE_KEY not found in environment variables.")
 else:
     try:
-        # Decode Base58 private key into bytes
         decoded_key = b58decode(PRIVATE_KEY)
-
-        # Handle both 32-byte and 64-byte key formats
-        if len(decoded_key) == 64:
-            wallet = Keypair.from_bytes(decoded_key)
-        elif len(decoded_key) == 32:
-            wallet = Keypair.from_seed(decoded_key)
-        else:
-            raise ValueError("Private key must be 32 or 64 bytes long.")
-
-        # Print wallet public key
+        wallet = Keypair.from_bytes(decoded_key) if len(decoded_key) == 64 else Keypair.from_seed(decoded_key)
         print(f"Wallet Address: {wallet.pubkey()}")
-
     except Exception as e:
         print(f"Error decoding private key: {e}")
 
 # ---------------------- DATABASE SETUP ----------------------
 
-# Create SQLite Database
 conn = sqlite3.connect("solana_memecoins.db")
 cursor = conn.cursor()
 cursor.execute("""
@@ -103,29 +97,28 @@ def send_telegram_alert(message):
     except requests.exceptions.RequestException as e:
         print(f"Error sending Telegram alert: {e}")
 
-# ---------------------- TWITTER SCRAPING ----------------------
+# ---------------------- TWEET SCRAPING USING TWEETY ----------------------
 
-# Extract Tickers & Contract Addresses from Tweets
 def extract_tickers_and_contracts(text):
     tickers = re.findall(r'\$[A-Z]{2,5}', text)
     contracts = re.findall(r'[1-9A-HJ-NP-Za-km-z]{44}', text)  # Solana contract pattern
     return tickers, contracts
 
-# Scrape Twitter for Memecoin Mentions
 def scrape_twitter_for_memecoins(kol_usernames):
     tweets = []
     analyzer = SentimentIntensityAnalyzer()
 
     for username in kol_usernames:
         try:
-            for tweet in sntwitter.TwitterSearchScraper(f'from:{username}').get_items():
-                tickers, contracts = extract_tickers_and_contracts(tweet.content)
-                sentiment = analyzer.polarity_scores(tweet.content)['compound']
+            for tweet in tweepy.Cursor(api.user_timeline, screen_name=username, tweet_mode='extended').items(50):
+                content = tweet.full_text
+                tickers, contracts = extract_tickers_and_contracts(content)
+                sentiment = analyzer.polarity_scores(content)['compound']
 
                 if tickers or contracts:
                     tweets.append({
                         "username": username,
-                        "content": tweet.content,
+                        "content": content,
                         "tickers": tickers,
                         "contracts": contracts,
                         "sentiment": sentiment
@@ -137,7 +130,6 @@ def scrape_twitter_for_memecoins(kol_usernames):
 
 # ---------------------- MEMECOIN DATA HANDLING ----------------------
 
-# Fetch DexScreener Data
 def fetch_dexscreener_data(contract_address):
     try:
         response = requests.get(DEXSCREENER_API + contract_address)
@@ -147,7 +139,6 @@ def fetch_dexscreener_data(contract_address):
         print(f"Error fetching DexScreener data: {e}")
     return None
 
-# Store Memecoin Data in Database
 def store_memecoin(data):
     try:
         conn = sqlite3.connect("solana_memecoins.db")
