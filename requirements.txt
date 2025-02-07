@@ -6,4 +6,4 @@ solders
 python-dotenv
 base58
 websocket-client
-certifi==2023.6.15
+certifi==2024.7.4
