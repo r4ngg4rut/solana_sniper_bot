@@ -13,7 +13,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from solana.rpc.api import Client
 from solders.keypair import Keypair
 from solana.rpc.types import TxOpts
-from solana.transaction import Transaction
+from solana.transactions import Transaction
 from dotenv import load_dotenv
 import websocket
 
