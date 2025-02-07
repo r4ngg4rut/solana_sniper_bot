@@ -1,11 +1,9 @@
-requests 
-snscrape 
-pandas 
-solana==0.30.0
-websocket-client 
-python-dotenv 
+requests
+snscrape
 vaderSentiment
+solana
 solders
+python-dotenv
 base58
-certifi>=2023.7.22
-
+sqlite3
+websocket-client

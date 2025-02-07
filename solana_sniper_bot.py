@@ -5,6 +5,8 @@ import sqlite3
 import ssl
 import json
 import threading
+import random
+import time
 import snscrape.modules.twitter as sntwitter
 from base58 import b58decode
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -20,16 +22,32 @@ import websocket
 # Disable SSL verification globally (temporary fix for Railway or Tweepy SSL issues)
 ssl._create_default_https_context = ssl._create_unverified_context
 
-# Monkey patch requests to bypass SSL verification
+# ---------------------- ROTATING USER-AGENT ----------------------
+
+# List of User-Agents to rotate
+user_agents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (iPad; CPU OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1'
+]
+
+# Monkey patch requests to bypass SSL verification and rotate User-Agent
 original_request = requests.Session.request
 
 def patched_request(self, method, url, *args, **kwargs):
     headers = kwargs.get('headers', {})
-    headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    
+    # Rotate User-Agent
+    headers['User-Agent'] = random.choice(user_agents)
+    
     kwargs['headers'] = headers
     kwargs['verify'] = False  # Disable SSL verification globally for all requests
+    
     return original_request(self, method, url, *args, **kwargs)
 
+# Apply the monkey patch
 requests.Session.request = patched_request
 
 # ---------------------- ENVIRONMENT CONFIGURATION ----------------------
@@ -130,6 +148,10 @@ def scrape_twitter_for_memecoins(kol_usernames):
                         "contracts": contracts,
                         "sentiment": sentiment
                     })
+
+                # Add a random delay between requests to mimic human behavior
+                time.sleep(random.uniform(1, 15))  # Delay between 1 and 3 seconds
+
         except Exception as e:
             print(f"Error scraping tweets from {username}: {e}")
 
