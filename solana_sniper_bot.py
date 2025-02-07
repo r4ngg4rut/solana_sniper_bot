@@ -73,6 +73,17 @@ def send_telegram_alert(message):
     data = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
     requests.post(url, data=data)
 
+# Monkey patch the requests session used by snscrape to add headers
+original_request = requests.Session.request
+
+def patched_request(self, method, url, *args, **kwargs):
+    headers = kwargs.get('headers', {})
+    headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    kwargs['headers'] = headers
+    return original_request(self, method, url, *args, **kwargs)
+
+requests.Session.request = patched_request
+
 # Extract Tickers & Contract Addresses from Tweets
 def extract_tickers_and_contracts(text):
     tickers = re.findall(r'\$[A-Z]{2,5}', text)
