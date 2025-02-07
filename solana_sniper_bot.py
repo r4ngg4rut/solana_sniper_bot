@@ -29,20 +29,25 @@ SOLSNIFFER_API = "https://solsniffer.com/api/score/"
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-# Decode the Base58 private key into bytes
-try:
-    decoded_key = b58decode(PRIVATE_KEY)
-
-# Create Keypair from the decoded bytes
-    print(f"Wallet Address: {wallet.pubkey()}")  # Print the wallet's public key
-except Exception as e:
-    print(f"Error decoding private key: {e}")
-
 # Solana Wallet Setup
 PRIVATE_KEY = os.getenv("SOL_PRIVATE_KEY")
 client = Client(SOLANA_RPC_URL)
-wallet = Keypair.from_bytes(decoded_key) 
 
+# Ensure the private key is present
+if PRIVATE_KEY is None:
+    print("Error: PRIVATE_KEY not found in environment variables.")
+else:
+    try:
+        # Decode the Base58 private key into bytes
+        decoded_key = b58decode(PRIVATE_KEY)
+        
+        # Create Keypair from decoded bytes
+        wallet = Keypair.from_bytes(decoded_key)
+        
+        # Print wallet public key
+        print(f"Wallet Address: {wallet.pubkey()}")
+    except Exception as e:
+        print(f"Error decoding private key: {e}")
 # Create SQLite Database
 conn = sqlite3.connect("solana_memecoins.db")
 cursor = conn.cursor()
