@@ -5,5 +5,4 @@ solana
 solders
 python-dotenv
 base58
-sqlite3
 websocket-client
