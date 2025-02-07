@@ -7,3 +7,4 @@ python-dotenv
 vaderSentiment
 solders
 base58
+certifi>=2023.7.22
