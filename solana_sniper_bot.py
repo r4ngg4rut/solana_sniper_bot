@@ -1,6 +1,7 @@
 import os
 import re
 import requests
+import certifi
 import sqlite3
 import ssl
 import json
@@ -16,11 +17,6 @@ from solana.rpc.types import TxOpts
 from solana.transaction import Transaction
 from dotenv import load_dotenv
 import websocket
-
-# ---------------------- SSL FIXES ----------------------
-
-# Disable SSL verification globally (temporary fix for Railway or Tweepy SSL issues)
-ssl._create_default_https_context = ssl._create_unverified_context
 
 # ---------------------- ROTATING USER-AGENT ----------------------
 
@@ -134,6 +130,9 @@ def scrape_twitter_for_memecoins(kol_usernames):
     tweets = []
     analyzer = SentimentIntensityAnalyzer()
 
+    # Set up the custom requests session with certifi for SSL verification
+    session = requests.Session()
+    session.verify = certifi.where()  # Use certifi certificates for SSL verification
     for username in kol_usernames:
         try:
             for tweet in sntwitter.TwitterSearchScraper(f'from:{username}').get_items():
